@@ -1,1 +1,677 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI-Enabled Fitness Activity Streaming System</title>
+  <meta name="description" content="Microservices-based fitness platform with Kafka real-time activity streaming and AI-powered workout recommendations." />
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card:#0f1a2e;
+      --muted:#9fb0c8;
+      --text:#e9f1ff;
+      --accent:#5eead4;
+      --accent2:#60a5fa;
+      --danger:#fb7185;
+      --warn:#fbbf24;
+      --ok:#34d399;
+      --border:rgba(255,255,255,0.08);
+      --shadow: 0 18px 50px rgba(0,0,0,0.45);
+      --radius:18px;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: radial-gradient(1200px 700px at 10% 10%, rgba(96,165,250,0.18), transparent 55%),
+                  radial-gradient(900px 500px at 90% 20%, rgba(94,234,212,0.14), transparent 55%),
+                  radial-gradient(900px 500px at 50% 90%, rgba(251,113,133,0.10), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      min-height:100vh;
+    }
+
+    a{color:inherit; text-decoration:none}
+    .container{
+      width:min(1120px, 92vw);
+      margin:0 auto;
+      padding:32px 0 56px;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      margin-bottom:26px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .logo{
+      width:44px;
+      height:44px;
+      border-radius:14px;
+      background: linear-gradient(135deg, rgba(94,234,212,0.95), rgba(96,165,250,0.95));
+      display:grid;
+      place-items:center;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+      border:1px solid rgba(255,255,255,0.12);
+    }
+
+    .logo svg{filter: drop-shadow(0 6px 12px rgba(0,0,0,0.35))}
+    .brand h1{
+      margin:0;
+      font-size:15px;
+      letter-spacing:0.2px;
+      font-weight:700;
+      line-height:1.2;
+    }
+    .brand p{
+      margin:0;
+      color: var(--muted);
+      font-size:12.5px;
+      line-height:1.2;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 14px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+      transition: transform .15s ease, background .15s ease, border-color .15s ease;
+      font-weight:600;
+      font-size:13px;
+      color: var(--text);
+      cursor:pointer;
+      user-select:none;
+    }
+    .btn:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(255,255,255,0.14);
+    }
+    .btn.primary{
+      background: linear-gradient(135deg, rgba(94,234,212,0.22), rgba(96,165,250,0.18));
+      border-color: rgba(94,234,212,0.35);
+    }
+    .btn.primary:hover{
+      background: linear-gradient(135deg, rgba(94,234,212,0.28), rgba(96,165,250,0.22));
+    }
+
+    .hero{
+      display:grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap:18px;
+      align-items:stretch;
+      margin-bottom:18px;
+    }
+
+    @media (max-width: 900px){
+      .hero{grid-template-columns:1fr}
+      .actions{justify-content:flex-start}
+    }
+
+    .card{
+      background: rgba(15,26,46,0.78);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:18px;
+      backdrop-filter: blur(10px);
+    }
+
+    .hero-left{
+      position:relative;
+      overflow:hidden;
+    }
+
+    .hero-left::before{
+      content:"";
+      position:absolute;
+      inset:-120px -80px auto auto;
+      width:340px;
+      height:340px;
+      background: radial-gradient(circle at 30% 30%, rgba(94,234,212,0.35), transparent 60%),
+                  radial-gradient(circle at 70% 70%, rgba(96,165,250,0.25), transparent 60%);
+      transform: rotate(12deg);
+      pointer-events:none;
+    }
+
+    .kicker{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:7px 12px;
+      border-radius:999px;
+      background: rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.10);
+      color: var(--muted);
+      font-size:12.5px;
+      width:fit-content;
+      margin-bottom:12px;
+    }
+
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background: var(--ok);
+      box-shadow: 0 0 0 6px rgba(52,211,153,0.12);
+    }
+
+    .hero-title{
+      margin:0;
+      font-size:30px;
+      line-height:1.12;
+      letter-spacing:-0.4px;
+      font-weight:800;
+    }
+
+    .hero-sub{
+      margin:10px 0 0;
+      color: var(--muted);
+      font-size:14.5px;
+      line-height:1.6;
+      max-width: 62ch;
+    }
+
+    .pill-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:14px;
+    }
+
+    .pill{
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      font-size:12px;
+      color: var(--text);
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .pill span{
+      width:7px;height:7px;border-radius:50%;
+      background: var(--accent);
+      opacity:0.9;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap:14px;
+      margin-top:14px;
+    }
+
+    .col-4{grid-column: span 4}
+    .col-6{grid-column: span 6}
+    .col-12{grid-column: span 12}
+
+    @media (max-width: 980px){
+      .col-4,.col-6{grid-column: span 12}
+    }
+
+    .section-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:10px;
+    }
+    .section-title h2{
+      margin:0;
+      font-size:14px;
+      letter-spacing:0.2px;
+      color: var(--text);
+    }
+    .section-title p{
+      margin:0;
+      font-size:12px;
+      color: var(--muted);
+    }
+
+    .list{
+      margin:0;
+      padding:0;
+      list-style:none;
+      display:grid;
+      gap:10px;
+    }
+
+    .li{
+      display:flex;
+      gap:10px;
+      padding:12px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      transition: transform .15s ease, background .15s ease;
+    }
+    .li:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.05);
+    }
+
+    .icon{
+      width:36px;height:36px;border-radius:14px;
+      display:grid;
+      place-items:center;
+      border:1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.04);
+      flex:0 0 auto;
+    }
+
+    .li strong{
+      display:block;
+      font-size:13px;
+      margin-bottom:2px;
+    }
+    .li small{
+      display:block;
+      font-size:12.2px;
+      color: var(--muted);
+      line-height:1.45;
+    }
+
+    .flow{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .step{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:12px 12px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .step-left{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width: 0;
+    }
+
+    .badge{
+      font-size:11px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      white-space:nowrap;
+    }
+
+    .step-title{
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+    }
+    .step-title b{
+      font-size:13px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .step-title span{
+      font-size:12px;
+      color: var(--muted);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .step-arrow{
+      color: rgba(255,255,255,0.35);
+      font-size:18px;
+      flex:0 0 auto;
+    }
+
+    .footer{
+      margin-top:16px;
+      color: var(--muted);
+      font-size:12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      opacity:0.9;
+    }
+
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+    .tiny{
+      font-size:11.5px;
+      color: rgba(159,176,200,0.9);
+    }
+
+    .toast{
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      width: min(360px, 92vw);
+      padding: 12px 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(15,26,46,0.92);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+      display:none;
+      z-index: 50;
+    }
+    .toast.show{display:block}
+    .toast strong{display:block; font-size:13px; margin-bottom:4px}
+    .toast span{display:block; font-size:12.5px; color: var(--muted); line-height:1.35}
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 13.5C7.5 7 10 5 12 5C14 5 16.5 7 20 13.5" stroke="rgba(11,18,32,0.9)" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M6.5 14.5C9 10.2 10.8 9 12 9C13.2 9 15 10.2 17.5 14.5" stroke="rgba(11,18,32,0.9)" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="12" cy="16.5" r="2.2" fill="rgba(11,18,32,0.9)"/>
+          </svg>
+        </div>
+        <div>
+          <h1>AI-Enabled Fitness Activity Streaming System</h1>
+          <p>Microservices • Kafka Streaming • AI Recommendations</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <a class="btn primary" href="https://github.com/KaranG03/AI-Enabled-Fitness-Activity-Streaming-System" target="_blank" rel="noreferrer">
+          <span>GitHub Repo</span>
+          <span aria-hidden="true">↗</span>
+        </a>
+        <button class="btn" id="copyCmdBtn" type="button">
+          <span>Copy Run Command</span>
+          <span aria-hidden="true">⎘</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="card hero-left">
+        <div class="kicker">
+          <span class="dot" aria-hidden="true"></span>
+          <span>Real-time activity pipeline + AI personalization</span>
+        </div>
+
+        <h2 class="hero-title">Track activities in real-time and generate AI-powered workout recommendations.</h2>
+        <p class="hero-sub">
+          A Spring Boot microservices system that streams fitness activities through <b>Apache Kafka</b>,
+          processes events in near real-time, and generates personalized recommendations using an <b>LLM</b>.
+          Built with scalable architecture patterns: <b>Gateway</b>, <b>Service Discovery</b>, and <b>Central Config</b>.
+        </p>
+
+        <div class="pill-row" aria-label="Key Highlights">
+          <div class="pill"><span></span>Spring Boot Microservices</div>
+          <div class="pill"><span></span>Kafka Producer/Consumer</div>
+          <div class="pill"><span></span>JWT Security (Keycloak)</div>
+          <div class="pill"><span></span>MongoDB + PostgreSQL</div>
+          <div class="pill"><span></span>Gateway + Eureka + Config</div>
+          <div class="pill"><span></span>Docker + Kubernetes</div>
+        </div>
+
+        <div class="grid">
+          <div class="card col-6" style="padding:14px;">
+            <div class="section-title">
+              <h2>Core Services</h2>
+              <p class="tiny">Spring Cloud stack</p>
+            </div>
+
+            <ul class="list">
+              <li class="li">
+                <div class="icon" aria-hidden="true">👤</div>
+                <div>
+                  <strong>User Service</strong>
+                  <small>Handles registration, authentication, and user profile management with JWT-based access.</small>
+                </div>
+              </li>
+
+              <li class="li">
+                <div class="icon" aria-hidden="true">🏃</div>
+                <div>
+                  <strong>Activity Service</strong>
+                  <small>Captures fitness activities (duration, calories, type, timestamp) and publishes Kafka events.</small>
+                </div>
+              </li>
+
+              <li class="li">
+                <div class="icon" aria-hidden="true">🤖</div>
+                <div>
+                  <strong>AI Recommendation Service</strong>
+                  <small>Consumes activity events, generates personalized insights via LLM, and stores outputs in MongoDB.</small>
+                </div>
+              </li>
+
+              <li class="li">
+                <div class="icon" aria-hidden="true">🌐</div>
+                <div>
+                  <strong>API Gateway</strong>
+                  <small>Single entry point for routing, auth enforcement, and unified API access across services.</small>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div class="card col-6" style="padding:14px;">
+            <div class="section-title">
+              <h2>Streaming Workflow</h2>
+              <p class="tiny">Event-driven architecture</p>
+            </div>
+
+            <div class="flow" role="list">
+              <div class="step" role="listitem">
+                <div class="step-left">
+                  <span class="badge mono">POST</span>
+                  <div class="step-title">
+                    <b>Client sends Activity</b>
+                    <span class="mono">/api/activities</span>
+                  </div>
+                </div>
+                <div class="step-arrow" aria-hidden="true">→</div>
+              </div>
+
+              <div class="step" role="listitem">
+                <div class="step-left">
+                  <span class="badge mono">KAFKA</span>
+                  <div class="step-title">
+                    <b>Activity Service publishes event</b>
+                    <span class="mono">topic: activity-events</span>
+                  </div>
+                </div>
+                <div class="step-arrow" aria-hidden="true">→</div>
+              </div>
+
+              <div class="step" role="listitem">
+                <div class="step-left">
+                  <span class="badge mono">@KafkaListener</span>
+                  <div class="step-title">
+                    <b>AI Service consumes events</b>
+                    <span class="mono">real-time processing</span>
+                  </div>
+                </div>
+                <div class="step-arrow" aria-hidden="true">→</div>
+              </div>
+
+              <div class="step" role="listitem">
+                <div class="step-left">
+                  <span class="badge mono">LLM</span>
+                  <div class="step-title">
+                    <b>Generate recommendations</b>
+                    <span class="mono">Gemini / Prompted insights</span>
+                  </div>
+                </div>
+                <div class="step-arrow" aria-hidden="true">→</div>
+              </div>
+
+              <div class="step" role="listitem">
+                <div class="step-left">
+                  <span class="badge mono">DB</span>
+                  <div class="step-title">
+                    <b>Store + retrieve results</b>
+                    <span class="mono">MongoDB + PostgreSQL</span>
+                  </div>
+                </div>
+                <div class="step-arrow" aria-hidden="true">✓</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card col-12" style="padding:14px;">
+            <div class="section-title">
+              <h2>Quick Start</h2>
+              <p class="tiny">Run locally</p>
+            </div>
+
+            <div class="li" style="margin:0;">
+              <div class="icon" aria-hidden="true">⚡</div>
+              <div style="width:100%;">
+                <strong>Run the backend services</strong>
+                <small>
+                  Clone the repo and start services. For full setup, use Docker/Kubernetes configs from the repository.
+                </small>
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                  <span class="badge mono" id="cmdText">mvn clean install && mvn spring-boot:run</span>
+                  <button class="btn" id="copyCmdBtn2" type="button">Copy</button>
+                </div>
+                <div class="tiny" style="margin-top:8px;">
+                  Tip: Gateway routes requests to services using Eureka discovery + centralized Config Server.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <aside class="card">
+        <div class="section-title">
+          <h2>Project Overview</h2>
+          <p class="tiny">Highlights</p>
+        </div>
+
+        <ul class="list">
+          <li class="li">
+            <div class="icon" aria-hidden="true">🔐</div>
+            <div>
+              <strong>Secure APIs</strong>
+              <small>JWT authentication (Keycloak-ready) with gateway routing and service-level access control.</small>
+            </div>
+          </li>
+
+          <li class="li">
+            <div class="icon" aria-hidden="true">📡</div>
+            <div>
+              <strong>Kafka Streaming</strong>
+              <small>Producer/Consumer pipeline for real-time activity ingestion and AI recommendation generation.</small>
+            </div>
+          </li>
+
+          <li class="li">
+            <div class="icon" aria-hidden="true">⚙️</div>
+            <div>
+              <strong>Scalable Architecture</strong>
+              <small>Microservices + Eureka discovery + centralized configuration for clean scalability.</small>
+            </div>
+          </li>
+
+          <li class="li">
+            <div class="icon" aria-hidden="true">🧠</div>
+            <div>
+              <strong>AI Personalization</strong>
+              <small>LLM-powered recommendations generated from structured activity data and stored for retrieval.</small>
+            </div>
+          </li>
+
+          <li class="li">
+            <div class="icon" aria-hidden="true">🧱</div>
+            <div>
+              <strong>Cloud/DevOps Ready</strong>
+              <small>Docker + Kubernetes deployment approach with clean separation of services and configs.</small>
+            </div>
+          </li>
+        </ul>
+
+        <div class="footer">
+          <div>
+            <div class="tiny">Maintained by</div>
+            <div style="font-weight:700;">Karan Gautam</div>
+          </div>
+          <div class="mono tiny">Java • Spring • Kafka • AI</div>
+        </div>
+      </aside>
+    </section>
+
+    <div class="footer">
+      <div>© <span id="year"></span> AI-Enabled Fitness Activity Streaming System</div>
+      <div class="tiny">Static landing page • Built for portfolio & GitHub Pages</div>
+    </div>
+
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <strong id="toastTitle">Copied!</strong>
+    <span id="toastMsg">Command copied to clipboard.</span>
+  </div>
+
+  <script>
+    const yearEl = document.getElementById("year");
+    yearEl.textContent = new Date().getFullYear();
+
+    const cmd = document.getElementById("cmdText").textContent.trim();
+
+    function showToast(title, msg){
+      const toast = document.getElementById("toast");
+      document.getElementById("toastTitle").textContent = title;
+      document.getElementById("toastMsg").textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    async function copyText(text){
+      try{
+        await navigator.clipboard.writeText(text);
+        showToast("Copied!", "Run command copied to clipboard.");
+      }catch(e){
+        showToast("Copy failed", "Your browser blocked clipboard access.");
+      }
+    }
+
+    document.getElementById("copyCmdBtn").addEventListener("click", () => copyText(cmd));
+    document.getElementById("copyCmdBtn2").addEventListener("click", () => copyText(cmd));
+  </script>
+</body>
+</html>
